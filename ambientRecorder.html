@@ -1,0 +1,896 @@
+<template>
+    <article class="card">
+        <header class="header">
+            <div class="header__id">
+                <span class="mark" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" class="mark__icon" focusable="false" aria-hidden="true">
+                        <path
+                            d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"
+                            fill="currentColor"
+                        ></path>
+                        <path
+                            d="M6 11v1a6 6 0 0 0 12 0v-1M12 18v3M9 21h6"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                        ></path>
+                    </svg>
+                </span>
+                <div>
+                    <h1 class="title">Ambient consultation recording</h1>
+                    <p class="subtitle">
+                        Speaker labels are added afterwards and may be wrong, missing, or merged.
+                    </p>
+                </div>
+            </div>
+
+            <div class="header__tools">
+                <div class="status" data-state={state}>
+                    <span class="dot" data-state={state}></span>
+                    <span class="status__label">{statusLabel}</span>
+                    <span class="status__rule" aria-hidden="true"></span>
+                    <span class="status__clock">{elapsedLabel}</span>
+                </div>
+
+                <!-- The only way to clear a kept consultation off this screen.
+                     A page reload deliberately does not: the transcript is
+                     restored on load, so this button is what ends it. -->
+                <template lwc:if={canStartOver}>
+                    <button
+                        class="iconbtn iconbtn_refresh"
+                        onclick={handleStartOver}
+                        title="Start over — clear this consultation and begin a new one"
+                        aria-label="Start over"
+                    >↻</button>
+                </template>
+            </div>
+        </header>
+
+        <div class="console">
+            <!-- Who it is for sits beside the button that starts it. They are
+                 one decision taken in one moment, and splitting them across
+                 two bands made the card taller than it had any need to be. -->
+            <div class="console__setup">
+                <lightning-record-picker
+                    class="picker__field"
+                    label="Patient"
+                    placeholder="Search contacts…"
+                    object-api-name="Contact"
+                    value={patientContactId}
+                    onchange={handlePatientChange}
+                ></lightning-record-picker>
+
+                <div class="console__control">
+                <template lwc:if={isRecording}>
+                    <button class="btn btn_stop" onclick={handleStop} disabled={isBusy}>
+                        <span class="btn__square" aria-hidden="true"></span>
+                        Stop recording
+                    </button>
+                </template>
+                <template lwc:else>
+                    <button class="btn btn_start" onclick={handleStart} disabled={isBusy}>
+                        <svg viewBox="0 0 24 24" class="btn__icon" focusable="false" aria-hidden="true">
+                            <path
+                                d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"
+                                fill="currentColor"
+                            ></path>
+                            <path
+                                d="M6 11v1a6 6 0 0 0 12 0v-1M12 18v3"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                            ></path>
+                        </svg>
+                        Start recording
+                    </button>
+                </template>
+
+                <!-- Reads as a live instrument rather than a spinner: it moves
+                     only while audio is actually being streamed. -->
+                <template lwc:if={isRecording}>
+                    <div class="wave" aria-hidden="true">
+                        <span></span><span></span><span></span><span></span>
+                        <span></span><span></span><span></span><span></span>
+                    </div>
+                </template>
+                </div>
+            </div>
+
+            <template lwc:if={hasTranscript}>
+                <div class="console__filed">
+                    <button class="btn btn_draft" onclick={handleGenerateDraft} disabled={isDraftLoading}>
+                        <svg viewBox="0 0 24 24" class="btn__icon" focusable="false" aria-hidden="true">
+                            <path
+                                d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3z"
+                                fill="currentColor"
+                            ></path>
+                            <path d="M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" fill="currentColor"></path>
+                        </svg>
+                        {generateLabel}
+                    </button>
+                    <span class="filed">
+                        Filed as <strong>{transcriptName}</strong>
+                    </span>
+                </div>
+            </template>
+        </div>
+
+        <template lwc:if={errorMessage}>
+            <p class="alert" role="alert">{errorMessage}</p>
+        </template>
+
+        <!-- The audio copy is evidence kept alongside the note, not the note
+             itself. Losing it is worth saying and not worth alarming anyone
+             over, so it is stated quietly rather than as a failure. -->
+        <template lwc:if={hasAudioNotice}>
+            <p class="notice">{audioNotice}</p>
+        </template>
+
+        <!-- Stated quietly rather than as an alert. Suppressing it entirely
+             left a recording that produced nothing and said nothing about why,
+             which is worse than the red box it replaced. -->
+        <template lwc:if={hasTranscriptionNotice}>
+            <p class="notice">{lastTranscriptionError}</p>
+        </template>
+
+        <!-- Capture strip. There is no word-by-word feed to show: Sarvam
+             diarizes over a whole recording, so the turns arrive together when
+             recording stops. This reports that audio is being kept. -->
+        <template lwc:if={isConnecting}>
+            <div class="live live_waiting">
+                <span class="live__tag">Connecting</span>
+                <p class="live__text live__text_idle">Opening the transcription stream…</p>
+            </div>
+        </template>
+
+        <template lwc:if={isListening}>
+            <div class="live" aria-live="polite" aria-atomic="false">
+                <div class="live__head">
+                    <span class="live__tag">
+                        <span class="live__pip" aria-hidden="true"></span>
+                        Live
+                    </span>
+                    <template lwc:if={lastSettled}>
+                        <span class="live__prev">
+                            <strong>{lastSettled.speaker}:</strong> {lastSettled.text}
+                        </span>
+                    </template>
+                </div>
+                <p class={liveTextClass}>{liveText}</p>
+
+                <!-- Reads the same buffer being kept for transcription, so a
+                     moving bar proves the microphone is genuinely live. -->
+                <div class="level" title="Microphone input level">
+                    <span class="level__label">Mic</span>
+                    <div class="level__track">
+                        <div class="level__fill" style={levelStyle}></div>
+                    </div>
+                </div>
+
+                <template lwc:if={hasLiveHint}>
+                    <p class="live__hint">{liveHint}</p>
+                </template>
+            </div>
+        </template>
+
+        <template lwc:if={hasSegments}>
+            <div class="meter">
+                <div class="meter__group">
+                    <span class="meter__value">{turnCount}</span>
+                    <span class="meter__label">turns</span>
+                </div>
+                <span class="meter__sep" aria-hidden="true"></span>
+                <div class="meter__group">
+                    <span class="meter__value">{speakerCountLabel}</span>
+                    <span class="meter__label">speakers</span>
+                </div>
+                <span class="meter__sep" aria-hidden="true"></span>
+                <div class="meter__group">
+                    <span class="meter__value">{elapsedLabel}</span>
+                    <span class="meter__label">duration</span>
+                </div>
+            </div>
+        </template>
+
+        <section class={transcriptClass} onscroll={handleTranscriptScroll}>
+            <template lwc:if={hasSegments}>
+                <template for:each={displaySegments} for:item="seg">
+                    <div key={seg.id} class={seg.cssClass}>
+                        <span class="segment__avatar" aria-hidden="true">{seg.initial}</span>
+                        <div class="segment__body">
+                            <div class="segment__meta">
+                                <span class="segment__speaker">{seg.speaker}</span>
+                                <span class="segment__time">{seg.timeLabel}</span>
+                            </div>
+                            <p class="segment__text">{seg.text}</p>
+                            <template lwc:if={seg.lowConfidence}>
+                                <span class="segment__flag">low confidence — review</span>
+                            </template>
+                            <template lwc:if={seg.provisional}>
+                                <span class="segment__flag segment__flag_live">
+                                    live — speaker assigned when recording stops
+                                </span>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </template>
+            <template lwc:else>
+                <template lwc:if={isIdle}>
+                    <div class="empty">
+                        <div class="empty__wave" aria-hidden="true">
+                            <span></span><span></span><span></span><span></span>
+                            <span></span><span></span><span></span><span></span>
+                            <span></span><span></span><span></span>
+                        </div>
+                        <p class="empty__title">Nothing captured yet</p>
+                        <p class="empty__text">
+                            Words appear as they are spoken; speaker labels settle once the model
+                            has heard enough of each voice.
+                        </p>
+                    </div>
+                </template>
+            </template>
+
+        </section>
+    </article>
+
+    <!-- ------------------------------------------------------- clinical draft -->
+    <template lwc:if={showDraft}>
+        <div class="backdrop" onclick={handleCloseDraft} onkeydown={handleModalKeydown}>
+            <section
+                class="modal"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Clinical draft"
+                onclick={stopPropagation}
+            >
+                <header class="modal__header">
+                    <div class="modal__id">
+                        <p class="modal__eyebrow">Clinical draft — for review</p>
+                        <h2 class="modal__title">Consultation summary</h2>
+                        <template lwc:if={patientName}>
+                            <p class="modal__source">for {patientName}</p>
+                        </template>
+                        <template lwc:if={transcriptName}>
+                            <p class="modal__source">from transcript {transcriptName}</p>
+                        </template>
+                    </div>
+                    <div class="modal__tools">
+                        <template lwc:if={isDraftReady}>
+                            <button
+                                class="toggle toggle_primary"
+                                onclick={handleDownloadPdf}
+                                disabled={pdfBusy}
+                            >
+                                {pdfLabel}
+                            </button>
+                            <button class="toggle" onclick={handleToggleEvidence}>
+                                {evidenceToggleLabel}
+                            </button>
+                        </template>
+                        <!-- No start-over control here. Clearing the console is
+                             offered once, from the card header, where the
+                             transcript it discards is actually in view. Beside
+                             Close on a draft it read as another way to dismiss
+                             the panel, which is not what it does. -->
+                        <button class="iconbtn" onclick={handleCloseDraft} aria-label="Close draft">×</button>
+                    </div>
+                </header>
+
+                <div class="modal__body">
+                    <template lwc:if={isDraftLoading}>
+                        <div class="loading">
+                            <div class="loading__bar"><span></span></div>
+                            <p class="loading__text">Reading the consultation and drafting…</p>
+                        </div>
+                    </template>
+
+                    <template lwc:if={hasPdfError}>
+                        <p class="alert alert_modal" role="alert">{pdfError}</p>
+                    </template>
+
+                    <template lwc:if={isDraftError}>
+                        <p class="alert alert_modal" role="alert">{draftError}</p>
+                    </template>
+
+                    <template lwc:if={isDraftReady}>
+                        <p class="disclaimer">
+                            Generated from the recorded conversation. Not a clinical record until a
+                            clinician has reviewed, corrected and signed it.
+                        </p>
+
+                        <template lwc:if={hasPrescriptionError}>
+                            <p class="alert alert_modal" role="alert">
+                                The draft was generated but not filed as a prescription:
+                                {prescriptionError}
+                            </p>
+                        </template>
+
+                        <!-- S ------------------------------------------------ -->
+                        <section class="soap">
+                            <div class="soap__rail" aria-hidden="true">S</div>
+                            <div class="soap__body">
+                                <h3 class="soap__title">Subjective</h3>
+                                <template lwc:if={hasSubjective}>
+                                    <template lwc:if={chiefComplaint}>
+                                        <p class="prose prose_lead">{chiefComplaint}</p>
+                                    </template>
+                                    <template lwc:if={subjectiveNarrative}>
+                                        <p class="prose">{subjectiveNarrative}</p>
+                                    </template>
+
+                                    <template lwc:if={hasPertinentNegatives}>
+                                        <p class="sub">Pertinent negatives</p>
+                                        <template for:each={pertinentNegatives} for:item="n">
+                                            <div key={n.id} class="row">
+                                                <p class="row__text">{n.text}</p>
+                                                <template lwc:if={n.showQuote}>
+                                                    <p class="cite">
+                                                        <span class="cite__at">{n.at}</span>{n.display}
+                                                        <template lwc:if={n.isTranslated}>
+                                                            <span class="cite__tag">translated</span>
+                                                        </template>
+                                                    </p>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </template>
+                                </template>
+                                <template lwc:else>
+                                    <p class="silent">Not discussed.</p>
+                                </template>
+                            </div>
+                        </section>
+
+                        <!-- O ------------------------------------------------ -->
+                        <section class="soap">
+                            <div class="soap__rail" aria-hidden="true">O</div>
+                            <div class="soap__body">
+                                <h3 class="soap__title">Objective</h3>
+                                <template lwc:if={hasObjective}>
+                                    <template lwc:if={hasVitals}>
+                                        <div class="obs">
+                                            <template for:each={vitals} for:item="v">
+                                                <div key={v.id} class="obs__item">
+                                                    <span class="obs__label">{v.label}</span>
+                                                    <span class="obs__value">{v.value}</span>
+                                                    <template lwc:if={v.context}>
+                                                        <span class="obs__context">{v.context}</span>
+                                                    </template>
+                                                    <template lwc:if={v.showQuote}>
+                                                        <p class="cite">
+                                                            <span class="cite__at">{v.at}</span>{v.display}
+                                                            <template lwc:if={v.isTranslated}>
+                                                                <span class="cite__tag">translated</span>
+                                                            </template>
+                                                        </p>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+
+                                    <template lwc:if={hasExamFindings}>
+                                        <p class="sub">Examination</p>
+                                        <template for:each={examFindings} for:item="e">
+                                            <div key={e.id} class="row">
+                                                <p class="row__text">{e.text}</p>
+                                                <template lwc:if={e.uncertain}>
+                                                    <p class="uncertain">{e.uncertain}</p>
+                                                </template>
+                                                <template lwc:if={e.showQuote}>
+                                                    <p class="cite">
+                                                        <span class="cite__at">{e.at}</span>{e.display}
+                                                        <template lwc:if={e.isTranslated}>
+                                                            <span class="cite__tag">translated</span>
+                                                        </template>
+                                                    </p>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </template>
+
+                                    <template lwc:if={hasFunctionalStatus}>
+                                        <p class="sub">Functional status</p>
+                                        <template for:each={functionalStatus} for:item="f">
+                                            <div key={f.id} class="row">
+                                                <p class="row__text">{f.text}</p>
+                                                <template lwc:if={f.showQuote}>
+                                                    <p class="cite">
+                                                        <span class="cite__at">{f.at}</span>{f.display}
+                                                        <template lwc:if={f.isTranslated}>
+                                                            <span class="cite__tag">translated</span>
+                                                        </template>
+                                                    </p>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </template>
+                                </template>
+                                <template lwc:else>
+                                    <p class="silent">Nothing measured or observed was recorded.</p>
+                                </template>
+                            </div>
+                        </section>
+
+                        <!-- A ------------------------------------------------ -->
+                        <section class="soap">
+                            <div class="soap__rail" aria-hidden="true">A</div>
+                            <div class="soap__body">
+                                <h3 class="soap__title">Assessment</h3>
+                                <template lwc:if={hasAssessment}>
+                                    <template for:each={assessment} for:item="a">
+                                        <div key={a.id} class="dx">
+                                            <div class="dx__head">
+                                                <p class="dx__problem">{a.problem}</p>
+                                                <template lwc:if={a.hasStatus}>
+                                                    <span class="pill">{a.statusLabel}</span>
+                                                </template>
+                                            </div>
+                                            <template lwc:if={a.reasoning}>
+                                                <p class="dx__reasoning">{a.reasoning}</p>
+                                            </template>
+                                            <template lwc:if={a.showQuote}>
+                                                <p class="cite">
+                                                    <span class="cite__at">{a.at}</span>{a.display}
+                                                    <template lwc:if={a.isTranslated}>
+                                                        <span class="cite__tag">translated</span>
+                                                    </template>
+                                                </p>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </template>
+                                <template lwc:else>
+                                    <p class="silent">No assessment was stated.</p>
+                                </template>
+                            </div>
+                        </section>
+
+                        <!-- P ------------------------------------------------ -->
+                        <section class="soap">
+                            <div class="soap__rail" aria-hidden="true">P</div>
+                            <div class="soap__body">
+                                <h3 class="soap__title">Plan</h3>
+                                <template lwc:if={hasPlan}>
+                                    <template lwc:if={hasPlanActions}>
+                                        <template for:each={planActions} for:item="p">
+                                            <div key={p.id} class="row">
+                                                <p class="row__text">{p.text}</p>
+                                                <template lwc:if={p.showQuote}>
+                                                    <p class="cite">
+                                                        <span class="cite__at">{p.at}</span>{p.display}
+                                                        <template lwc:if={p.isTranslated}>
+                                                            <span class="cite__tag">translated</span>
+                                                        </template>
+                                                    </p>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </template>
+
+                                    <template lwc:if={hasInvestigations}>
+                                        <p class="sub">Investigations</p>
+                                        <template for:each={investigations} for:item="i">
+                                            <div key={i.id} class="row">
+                                                <div class="row__split">
+                                                    <span class="row__text">{i.name}</span>
+                                                    <template lwc:if={i.timing}>
+                                                        <span class="row__aside">{i.timing}</span>
+                                                    </template>
+                                                </div>
+                                                <template lwc:if={i.showQuote}>
+                                                    <p class="cite">
+                                                        <span class="cite__at">{i.at}</span>{i.display}
+                                                        <template lwc:if={i.isTranslated}>
+                                                            <span class="cite__tag">translated</span>
+                                                        </template>
+                                                    </p>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </template>
+
+                                    <template lwc:if={hasPatientInstructions}>
+                                        <p class="sub">Patient instructions</p>
+                                        <template for:each={patientInstructions} for:item="p">
+                                            <div key={p.id} class="row">
+                                                <p class="row__text">{p.text}</p>
+                                                <template lwc:if={p.showQuote}>
+                                                    <p class="cite">
+                                                        <span class="cite__at">{p.at}</span>{p.display}
+                                                        <template lwc:if={p.isTranslated}>
+                                                            <span class="cite__tag">translated</span>
+                                                        </template>
+                                                    </p>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </template>
+
+                                    <template lwc:if={followUpText}>
+                                        <p class="sub">Follow-up</p>
+                                        <div class="row">
+                                            <p class="row__text">{followUpText}</p>
+                                            <template lwc:if={followUpQuote}>
+                                                <p class="cite">
+                                                    <span class="cite__at">{followUpQuote.at}</span>{followUpQuote.display}
+                                                    <template lwc:if={followUpQuote.isTranslated}>
+                                                        <span class="cite__tag">translated</span>
+                                                    </template>
+                                                </p>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </template>
+                                <template lwc:else>
+                                    <p class="silent">No plan was stated.</p>
+                                </template>
+                            </div>
+                        </section>
+
+                        <!-- Rx ----------------------------------------------- -->
+                        <!-- Laid out as a prescription sheet rather than a list of
+                             cards: who it is for, what it is for, and the orders in
+                             one table, which is the form a clinician already reads
+                             and can check a line at a time. -->
+                        <section class="soap soap_rx">
+                            <div class="soap__rail" aria-hidden="true">℞</div>
+                            <div class="soap__body">
+                                <div class="script">
+                                    <div class="script__masthead">
+                                        <h3 class="script__title">Clinical Prescription</h3>
+                                        <span class="script__mark" aria-hidden="true">✚</span>
+                                    </div>
+
+                                    <!-- Identity first. An order sheet that does not
+                                         name its patient is the error this whole
+                                         component exists to avoid. -->
+                                    <dl class="script__who">
+                                        <div class="script__field">
+                                            <dt>Patient Name</dt>
+                                            <dd>
+                                                <template lwc:if={patientName}>{patientName}</template>
+                                                <template lwc:else>
+                                                    <span class="script__gap">not selected</span>
+                                                </template>
+                                            </dd>
+                                        </div>
+                                        <template lwc:if={patientAgeSex}>
+                                            <div class="script__field">
+                                                <dt>Age / Sex</dt>
+                                                <dd>{patientAgeSex}</dd>
+                                            </div>
+                                        </template>
+                                        <template lwc:if={patientWeight}>
+                                            <div class="script__field">
+                                                <dt>Weight</dt>
+                                                <dd>{patientWeight}</dd>
+                                            </div>
+                                        </template>
+                                        <div class="script__field">
+                                            <dt>Date</dt>
+                                            <dd>{prescriptionDate}</dd>
+                                        </div>
+                                    </dl>
+
+                                    <!-- Hidden while editing. The edit panel below carries its
+                                         own Diagnosis and Investigations fields, and showing
+                                         both left the sheet stating each one twice. -->
+                                    <template lwc:if={isViewingRx}>
+                                        <template lwc:if={hasRxDiagnosis}>
+                                            <p class="script__dx">
+                                                <span class="script__label">Diagnosis</span>
+                                                {rxDiagnosis}
+                                            </p>
+                                        </template>
+
+                                        <template lwc:if={hasInvestigations}>
+                                            <div class="script__inv">
+                                                <p class="script__label">Investigations</p>
+                                                <ul class="script__invlist">
+                                                    <template for:each={investigations} for:item="i">
+                                                        <li key={i.id}>
+                                                            {i.name}
+                                                            <template lwc:if={i.timing}>
+                                                                <span class="script__invwhen">{i.timing}</span>
+                                                            </template>
+                                                        </li>
+                                                    </template>
+                                                </ul>
+                                            </div>
+                                        </template>
+                                    </template>
+
+                                    <div class="script__txhead">
+                                        <p class="script__label script__label_tx">Treatment</p>
+                                        <template lwc:if={hasPrescription}>
+                                            <template lwc:if={isEditingRx}>
+                                                <div class="script__txtools">
+                                                    <button
+                                                        class="toggle toggle_primary"
+                                                        onclick={handleSaveRx}
+                                                        disabled={rxSaving}
+                                                    >
+                                                        {rxSaveLabel}
+                                                    </button>
+                                                    <button class="toggle" onclick={handleCancelRxEdit}>
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </template>
+                                            <template lwc:else>
+                                                <template lwc:if={canEditRx}>
+                                                    <button class="toggle" onclick={handleEditRx}>
+                                                        Edit details
+                                                    </button>
+                                                </template>
+                                                <template lwc:else>
+                                                    <span class="script__locked">{rxEditHint}</span>
+                                                </template>
+                                            </template>
+                                        </template>
+                                    </div>
+
+                                    <template lwc:if={hasRxEditError}>
+                                        <p class="alert alert_modal" role="alert">{rxEditError}</p>
+                                    </template>
+
+                                    <template lwc:if={isEditingRx}>
+                                        <!-- The diagnosis and the tests are corrected in the
+                                             same pass as the drugs, because a reviewer reading
+                                             this sheet is checking one document, not three. -->
+                                        <div class="editblock">
+                                            <p class="script__label">Diagnosis</p>
+                                            <template lwc:if={hasDxEdits}>
+                                                <template for:each={rxDxEdits} for:item="d">
+                                                    <div key={d.key} class="editrow">
+                                                        <input
+                                                            class="cellinput"
+                                                            type="text"
+                                                            value={d.problem}
+                                                            data-index={d.index}
+                                                            onchange={handleDxChange}
+                                                            aria-label="Diagnosis"
+                                                        />
+                                                        <template lwc:if={d.statusLabel}>
+                                                            <span class="editrow__fixed">{d.statusLabel}</span>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                            </template>
+                                            <template lwc:else>
+                                                <p class="silent">No diagnosis was stated.</p>
+                                            </template>
+                                        </div>
+
+                                        <div class="editblock">
+                                            <div class="editblock__head">
+                                                <p class="script__label">Investigations</p>
+                                                <button class="toggle" onclick={handleAddInvestigation}>
+                                                    Add investigation
+                                                </button>
+                                            </div>
+                                            <template for:each={rxInvEdits} for:item="t">
+                                                <div key={t.key} class="editrow">
+                                                    <input
+                                                        class="cellinput"
+                                                        type="text"
+                                                        value={t.name}
+                                                        data-key={t.key}
+                                                        data-field="name"
+                                                        onchange={handleInvChange}
+                                                        placeholder="Investigation"
+                                                        aria-label="Investigation"
+                                                    />
+                                                    <input
+                                                        class="cellinput cellinput_when"
+                                                        type="text"
+                                                        value={t.timing}
+                                                        data-key={t.key}
+                                                        data-field="timing"
+                                                        onchange={handleInvChange}
+                                                        placeholder="When"
+                                                        aria-label="When"
+                                                    />
+                                                    <button
+                                                        class="rowdrop"
+                                                        data-key={t.key}
+                                                        onclick={handleRemoveInvestigation}
+                                                        title="Remove this investigation"
+                                                        aria-label="Remove this investigation"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            </template>
+                                        </div>
+
+                                        <p class="script__label script__label_tx">Medicines</p>
+                                        <!-- A second table rather than an input in every cell:
+                                             the read-only sheet stays the thing a clinician
+                                             signs off, and editing is a mode you are plainly
+                                             in or out of. -->
+                                        <div class="script__scroll">
+                                            <table class="rxtable rxtable_edit">
+                                                <thead>
+                                                    <tr>
+                                                        <th scope="col">Medicine</th>
+                                                        <th scope="col">Strength</th>
+                                                        <th scope="col">Form &amp; Route</th>
+                                                        <th scope="col">Frequency</th>
+                                                        <th scope="col">Duration</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <template for:each={rxEdits} for:item="e">
+                                                        <tr key={e.key}>
+                                                            <template lwc:if={e.editable}>
+                                                                <td class="rxtable__med">
+                                                                    <input
+                                                                        class="cellinput"
+                                                                        type="text"
+                                                                        value={e.medication}
+                                                                        data-index={e.draftIndex}
+                                                                        data-field="medication"
+                                                                        onchange={handleRxFieldChange}
+                                                                        aria-label="Medicine"
+                                                                    />
+                                                                </td>
+                                                                <td>
+                                                                    <input
+                                                                        class="cellinput"
+                                                                        type="text"
+                                                                        value={e.strength}
+                                                                        data-index={e.draftIndex}
+                                                                        data-field="strength"
+                                                                        onchange={handleRxFieldChange}
+                                                                        aria-label="Strength"
+                                                                    />
+                                                                </td>
+                                                                <td>
+                                                                    <input
+                                                                        class="cellinput"
+                                                                        type="text"
+                                                                        value={e.doseRoute}
+                                                                        data-index={e.draftIndex}
+                                                                        data-field="doseRoute"
+                                                                        onchange={handleRxFieldChange}
+                                                                        aria-label="Form and route"
+                                                                    />
+                                                                </td>
+                                                                <td>
+                                                                    <input
+                                                                        class="cellinput"
+                                                                        type="text"
+                                                                        value={e.frequency}
+                                                                        data-index={e.draftIndex}
+                                                                        data-field="frequency"
+                                                                        onchange={handleRxFieldChange}
+                                                                        aria-label="Frequency"
+                                                                    />
+                                                                </td>
+                                                                <td>
+                                                                    <input
+                                                                        class="cellinput"
+                                                                        type="text"
+                                                                        value={e.duration}
+                                                                        data-index={e.draftIndex}
+                                                                        data-field="duration"
+                                                                        onchange={handleRxFieldChange}
+                                                                        aria-label="Duration"
+                                                                    />
+                                                                </td>
+                                                            </template>
+                                                            <template lwc:else>
+                                                                <td class="rxtable__med">
+                                                                    <span class="rxtable__drug">{e.drug}</span>
+                                                                    <span class="rxtable__sub">{e.lockedReason}</span>
+                                                                </td>
+                                                                <td colspan="4"></td>
+                                                            </template>
+                                                        </tr>
+                                                    </template>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </template>
+
+                                    <template lwc:elseif={hasPrescription}>
+                                        <!-- Scrolls inside itself. Five columns will not
+                                             fit a phone, and a table that widens the modal
+                                             pushes the note off screen instead. -->
+                                        <div class="script__scroll">
+                                            <table class="rxtable">
+                                                <thead>
+                                                    <tr>
+                                                        <th scope="col">Medicine</th>
+                                                        <th scope="col">Strength</th>
+                                                        <th scope="col">Form &amp; Route</th>
+                                                        <th scope="col">Frequency</th>
+                                                        <th scope="col">Duration</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <template for:each={prescription} for:item="m">
+                                                        <tr key={m.id} class={m.rowClass}>
+                                                            <td class="rxtable__med">
+                                                                <span class="rxtable__drug">{m.drug}</span>
+                                                                <!-- Only the two states that need attention are
+                                                                     labelled. "New" is what almost every row is,
+                                                                     so saying so on all of them was noise beside
+                                                                     the drug name; "changed" and "stopped" are
+                                                                     the ones a reviewer must not miss. -->
+                                                                <template lwc:if={m.showStatus}>
+                                                                    <span class={m.badgeClass}>{m.statusLabel}</span>
+                                                                </template>
+                                                                <!-- The PRN badge was removed on request. isPrn is
+                                                                     still on the draft and on the filed record; it is
+                                                                     only no longer shown beside the drug name. -->
+                                                                <template lwc:if={m.indication}>
+                                                                    <span class="rxtable__sub">for {m.indication}</span>
+                                                                </template>
+                                                                <template lwc:if={m.replaces}>
+                                                                    <span class="rxtable__sub">replaces {m.replaces}</span>
+                                                                </template>
+                                                                <template lwc:if={m.note}>
+                                                                    <span class="rxtable__note">{m.note}</span>
+                                                                </template>
+                                                                <template lwc:if={m.uncertain}>
+                                                                    <span class="uncertain">{m.uncertain}</span>
+                                                                </template>
+                                                                <template lwc:if={m.showQuote}>
+                                                                    <span class="cite">
+                                                                        <span class="cite__at">{m.at}</span>{m.display}
+                                                                        <template lwc:if={m.isTranslated}>
+                                                                            <span class="cite__tag">translated</span>
+                                                                        </template>
+                                                                    </span>
+                                                                </template>
+                                                            </td>
+                                                            <td>{m.strength}</td>
+                                                            <td>{m.doseRoute}</td>
+                                                            <td>
+                                                                {m.frequency}
+                                                                <template lwc:if={m.timing}>
+                                                                    <span class="rxtable__sub">({m.timing})</span>
+                                                                </template>
+                                                            </td>
+                                                            <td>{m.duration}</td>
+                                                        </tr>
+                                                    </template>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </template>
+                                    <template lwc:else>
+                                        <p class="silent">No medications were discussed.</p>
+                                    </template>
+                                </div>
+                            </div>
+                        </section>
+                    </template>
+
+                    <!-- Only when the response could not be parsed. Without it a
+                         malformed reply leaves the clinician staring at an error
+                         and nothing else. -->
+                    <template lwc:if={hasUnparsedResponse}>
+                        <section class="block">
+                            <h3 class="block__title">Model response</h3>
+                            <pre class="json">{rawDraft}</pre>
+                        </section>
+                    </template>
+                </div>
+
+                <footer class="modal__footer modal__footer_end">
+                    <div class="modal__actions">
+                        <button class="btn btn_primary" onclick={handleCloseDraft}>Close</button>
+                    </div>
+                </footer>
+            </section>
+        </div>
+    </template>
+</template>

@@ -1,0 +1,1706 @@
+/*
+ * Clinical, not corporate. One accent carries every AI affordance, three
+ * semantic colours carry state — live, warn, danger — and four muted tones
+ * carry speaker identity. Nothing else is allowed to introduce a hue, so a
+ * red badge in the draft always means the same thing as a red rail in the
+ * transcript.
+ */
+:host {
+    --live: #2e844a;
+    --warn: #a86403;
+    --danger: #ba0517;
+    --accent: #0b5cab;
+    --accent-soft: #eef4fb;
+
+    --ink: #16191d;
+    --ink-weak: #5c6470;
+    --ink-faint: #8b939f;
+    --rule: #e3e6ea;
+    --rule-soft: #f0f2f4;
+    --surface: #ffffff;
+    --surface-sunk: #f7f8fa;
+
+    --spk-1: #3b6fa0;
+    --spk-2: #7a5299;
+    --spk-3: #2f7d6f;
+    --spk-4: #94623a;
+
+    --radius: 0.5rem;
+    --radius-sm: 0.3125rem;
+
+    display: block;
+    padding: 1rem;
+    color: var(--ink);
+    font-size: 0.875rem;
+}
+
+.card {
+    max-width: 60rem;
+    border: 1px solid var(--rule);
+    border-radius: 0.75rem;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(22, 25, 29, 0.04), 0 4px 16px rgba(22, 25, 29, 0.05);
+    overflow: hidden;
+}
+
+/* ------------------------------------------------------------------ header */
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 1.125rem 1.25rem;
+    border-bottom: 1px solid var(--rule);
+    background: linear-gradient(180deg, #fbfcfd 0%, var(--surface) 100%);
+}
+
+.header__id {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.mark {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--radius);
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+.mark__icon {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.title {
+    font-size: 1.0625rem;
+    font-weight: 650;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+}
+
+.subtitle {
+    margin-top: 0.0625rem;
+    font-size: 0.78125rem;
+    color: var(--ink-weak);
+}
+
+/* Holds the status pill and the start-over control together, so the header
+   keeps its two-column balance instead of spreading into three and letting the
+   pill drift away from the edge. */
+.header__tools {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    padding: 0.375rem 0.75rem;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: var(--surface);
+}
+
+.status[data-state='recording'] {
+    border-color: #c3e2cd;
+    background: #f1f9f4;
+}
+
+.status[data-state='saving'],
+.status[data-state='connecting'] {
+    border-color: #eedcc0;
+    background: #fdf7ee;
+}
+
+.status[data-state='error'] {
+    border-color: #f0c9ce;
+    background: #fdf1f2;
+}
+
+.status__label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--ink-weak);
+}
+
+.status__rule {
+    width: 1px;
+    height: 0.75rem;
+    background: var(--rule);
+}
+
+.status__clock {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8125rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+}
+
+.dot {
+    width: 0.4375rem;
+    height: 0.4375rem;
+    border-radius: 50%;
+    background: var(--ink-faint);
+}
+
+.dot[data-state='recording'] {
+    background: var(--live);
+    box-shadow: 0 0 0 0 rgba(46, 132, 74, 0.5);
+    animation: pulse 1.8s ease-out infinite;
+}
+
+.dot[data-state='connecting'],
+.dot[data-state='saving'] {
+    background: var(--warn);
+}
+
+.dot[data-state='error'] {
+    background: var(--danger);
+}
+
+@keyframes pulse {
+    70% {
+        box-shadow: 0 0 0 0.375rem rgba(46, 132, 74, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(46, 132, 74, 0);
+    }
+}
+
+/* ----------------------------------------------------------------- patient */
+
+/* Aligned on the bottom edge: the picker carries a label above its input and
+   the button does not, so matching their tops would leave the button floating
+   clear of the field it belongs beside. */
+.console__setup {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.875rem;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.picker__field {
+    display: block;
+    width: 18rem;
+    max-width: 100%;
+}
+
+/* ----------------------------------------------------------------- console */
+
+.console {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--rule-soft);
+    background: var(--surface-sunk);
+}
+
+.console__control,
+.console__filed {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    padding: 0.5625rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    color: #fff;
+    transition: filter 0.12s ease, box-shadow 0.12s ease;
+}
+
+.btn:hover:not(:disabled) {
+    filter: brightness(0.93);
+}
+
+.btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn__icon {
+    width: 1rem;
+    height: 1rem;
+    flex: none;
+}
+
+.btn__square {
+    width: 0.625rem;
+    height: 0.625rem;
+    flex: none;
+    border-radius: 1px;
+    background: currentColor;
+}
+
+.btn_start {
+    background: var(--live);
+    box-shadow: 0 1px 2px rgba(46, 132, 74, 0.3);
+}
+
+.btn_stop {
+    background: var(--danger);
+    box-shadow: 0 1px 2px rgba(186, 5, 23, 0.3);
+}
+
+.btn_draft {
+    background: var(--accent);
+    box-shadow: 0 1px 2px rgba(11, 92, 171, 0.3);
+}
+
+.btn_primary {
+    background: var(--ink);
+}
+
+/* Moves only while audio is streaming, so it reads as an instrument. */
+.wave {
+    display: flex;
+    align-items: center;
+    gap: 0.1875rem;
+    height: 1.5rem;
+}
+
+.wave span {
+    display: block;
+    width: 0.1875rem;
+    height: 0.375rem;
+    border-radius: 999px;
+    background: var(--live);
+    opacity: 0.75;
+    animation: bounce 1s ease-in-out infinite;
+}
+
+.wave span:nth-child(2) {
+    animation-delay: 0.1s;
+}
+.wave span:nth-child(3) {
+    animation-delay: 0.2s;
+}
+.wave span:nth-child(4) {
+    animation-delay: 0.3s;
+}
+.wave span:nth-child(5) {
+    animation-delay: 0.4s;
+}
+.wave span:nth-child(6) {
+    animation-delay: 0.5s;
+}
+.wave span:nth-child(7) {
+    animation-delay: 0.6s;
+}
+.wave span:nth-child(8) {
+    animation-delay: 0.7s;
+}
+
+@keyframes bounce {
+    0%,
+    100% {
+        height: 0.375rem;
+    }
+    50% {
+        height: 1.125rem;
+    }
+}
+
+.filed {
+    font-size: 0.75rem;
+    color: var(--ink-weak);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.filed strong {
+    color: var(--ink);
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Same footprint as .alert so the layout does not shift, but read as a note.
+   Nothing here failed that the clinician needs to act on — the transcript and
+   the draft both exist — and a red banner over a working consultation trains
+   people to ignore the banner that does matter. */
+.notice {
+    margin: 0.875rem 1.25rem 0;
+    padding: 0.5625rem 0.75rem;
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--ink-faint);
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunk);
+    font-size: 0.78125rem;
+    line-height: 1.5;
+    color: var(--ink-weak);
+}
+
+.alert {
+    margin: 0.875rem 1.25rem 0;
+    padding: 0.5625rem 0.75rem;
+    border: 1px solid #f0c9ce;
+    border-left-width: 3px;
+    border-radius: var(--radius-sm);
+    background: #fdf1f2;
+    font-size: 0.78125rem;
+    line-height: 1.5;
+    color: #8f0512;
+}
+
+/* ------------------------------------------------------------------ meter */
+
+.meter {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--rule-soft);
+}
+
+.meter__group {
+    display: flex;
+    align-items: baseline;
+    gap: 0.375rem;
+}
+
+.meter__value {
+    font-size: 1rem;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+}
+
+.meter__label {
+    font-size: 0.6875rem;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.meter__sep {
+    width: 1px;
+    height: 1rem;
+    background: var(--rule);
+}
+
+/* -------------------------------------------------------------- transcript */
+
+/*
+ * Capped and scrolled rather than unbounded. A two-minute consultation is
+ * already ~37 turns, which pushed the recorder controls and the live strip off
+ * the top of the screen — the two things the clinician needs while recording.
+ * vh so it adapts to the window, with a rem ceiling so it does not become an
+ * unreadably tall column on a large monitor.
+ */
+.transcript {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    padding: 1.25rem;
+    max-height: min(60vh, 32rem);
+    overflow-y: auto;
+    /* Stops the page behind from scrolling on once the transcript hits its end. */
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .transcript {
+        scroll-behavior: auto;
+    }
+}
+
+.transcript::-webkit-scrollbar {
+    width: 0.5rem;
+}
+
+.transcript::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.transcript::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: var(--rule);
+}
+
+.transcript::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-faint);
+}
+
+/* The empty state is the one case that should not be held at the cap — there is
+   nothing to scroll, and a tall box with a centred message in it reads broken.
+   A modifier class rather than :has(), which the LWC style compiler is not
+   reliably going to carry through. */
+.transcript_empty {
+    max-height: none;
+    overflow-y: visible;
+}
+
+.empty {
+    padding: 2.5rem 1rem;
+    text-align: center;
+}
+
+.empty__wave {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    height: 2rem;
+    margin-bottom: 1rem;
+}
+
+.empty__wave span {
+    display: block;
+    width: 0.1875rem;
+    border-radius: 999px;
+    background: var(--rule);
+}
+
+.empty__wave span:nth-child(1),
+.empty__wave span:nth-child(11) {
+    height: 0.375rem;
+}
+.empty__wave span:nth-child(2),
+.empty__wave span:nth-child(10) {
+    height: 0.75rem;
+}
+.empty__wave span:nth-child(3),
+.empty__wave span:nth-child(9) {
+    height: 1.25rem;
+}
+.empty__wave span:nth-child(4),
+.empty__wave span:nth-child(8) {
+    height: 0.875rem;
+}
+.empty__wave span:nth-child(5),
+.empty__wave span:nth-child(7) {
+    height: 1.5rem;
+}
+.empty__wave span:nth-child(6) {
+    height: 1rem;
+}
+
+.empty__title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--ink-weak);
+}
+
+.empty__text {
+    max-width: 30rem;
+    margin: 0.375rem auto 0;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--ink-faint);
+}
+
+.segment {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem 0.625rem 0.75rem;
+    border-left: 3px solid var(--rule);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    background: var(--surface-sunk);
+}
+
+/*
+ * A line from the live preview, before the whole recording has been transcribed
+ * and the speakers worked out. Held visually apart from settled turns so nobody
+ * reads an unattributed line as an attributed one — it is going to be replaced.
+ */
+.segment_provisional {
+    border-left-style: dashed;
+    opacity: 0.82;
+}
+
+.segment__flag_live {
+    color: var(--accent);
+}
+
+.segment__avatar {
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #fff;
+    background: var(--ink-faint);
+}
+
+.segment__body {
+    min-width: 0;
+    flex: 1;
+}
+
+.segment__meta {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.segment__speaker {
+    font-size: 0.75rem;
+    font-weight: 650;
+    letter-spacing: 0.01em;
+}
+
+.segment__time {
+    font-size: 0.6875rem;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+}
+
+.segment__text {
+    margin-top: 0.1875rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+.segment__flag {
+    display: inline-block;
+    margin-top: 0.3125rem;
+    padding: 0.0625rem 0.375rem;
+    border-radius: 999px;
+    background: #fdf7ee;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--warn);
+}
+
+.segment_flagged {
+    border-left-color: var(--warn);
+}
+
+.tone-1 {
+    border-left-color: var(--spk-1);
+}
+.tone-1 .segment__speaker {
+    color: var(--spk-1);
+}
+.tone-1 .segment__avatar {
+    background: var(--spk-1);
+}
+
+.tone-2 {
+    border-left-color: var(--spk-2);
+}
+.tone-2 .segment__speaker {
+    color: var(--spk-2);
+}
+.tone-2 .segment__avatar {
+    background: var(--spk-2);
+}
+
+.tone-3 {
+    border-left-color: var(--spk-3);
+}
+.tone-3 .segment__speaker {
+    color: var(--spk-3);
+}
+.tone-3 .segment__avatar {
+    background: var(--spk-3);
+}
+
+.tone-4 {
+    border-left-color: var(--spk-4);
+}
+.tone-4 .segment__speaker {
+    color: var(--spk-4);
+}
+.tone-4 .segment__avatar {
+    background: var(--spk-4);
+}
+
+/* --------------------------------------------------------------- live strip */
+
+.live {
+    margin: 0 1.25rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid #c3e2cd;
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, #f4faf6 0%, #ffffff 100%);
+}
+
+.live_waiting {
+    border-color: #eedcc0;
+    background: #fdf9f2;
+}
+
+.live__head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.625rem;
+    margin-bottom: 0.375rem;
+}
+
+.live__tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    flex: none;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--live);
+}
+
+.live_waiting .live__tag {
+    color: var(--warn);
+}
+
+.live__pip {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: 50%;
+    background: var(--live);
+    animation: blink 1.2s ease-in-out infinite;
+}
+
+@keyframes blink {
+    50% {
+        opacity: 0.2;
+    }
+}
+
+/* The turn before this one, so the live words have something to read against. */
+.live__prev {
+    min-width: 0;
+    font-size: 0.75rem;
+    color: var(--ink-faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.live__prev strong {
+    font-weight: 650;
+    color: var(--ink-weak);
+}
+
+.live__text {
+    font-size: 1rem;
+    line-height: 1.5;
+    font-weight: 500;
+    color: var(--ink);
+}
+
+.level {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.625rem;
+}
+
+.level__label,
+.level__count {
+    flex: none;
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+
+.level__count {
+    font-variant-numeric: tabular-nums;
+}
+
+.level__track {
+    flex: 1;
+    height: 0.25rem;
+    border-radius: 999px;
+    background: var(--rule);
+    overflow: hidden;
+}
+
+.level__fill {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--live);
+    transition: width 0.1s linear;
+}
+
+.live__hint {
+    margin-top: 0.625rem;
+    padding: 0.5rem 0.625rem;
+    border-left: 2px solid var(--warn);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    background: #fdf7ee;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: #7a4a02;
+}
+
+/* Provisional until Deepgram commits the words. */
+.live__text_idle {
+    font-size: 0.875rem;
+    font-weight: 400;
+    font-style: italic;
+    color: var(--ink-faint);
+}
+
+/* ----------------------------------------------------------- draft modal */
+
+.backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: rgba(22, 25, 29, 0.5);
+}
+
+.modal {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 46rem;
+    max-height: 90vh;
+    border-radius: 0.75rem;
+    background: var(--surface);
+    box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.28);
+    overflow: hidden;
+}
+
+.modal__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.125rem 1.25rem;
+    border-bottom: 1px solid var(--rule);
+}
+
+.modal__eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+
+.modal__title {
+    margin-top: 0.1875rem;
+    font-size: 1.125rem;
+    font-weight: 650;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+}
+
+.modal__source {
+    margin-top: 0.125rem;
+    font-size: 0.75rem;
+    color: var(--ink-weak);
+}
+
+.modal__tools {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.iconbtn {
+    border: none;
+    background: none;
+    font-size: 1.375rem;
+    line-height: 1;
+    color: var(--ink-faint);
+    cursor: pointer;
+    padding: 0.125rem 0.3125rem;
+    border-radius: var(--radius-sm);
+}
+
+.iconbtn:hover {
+    background: var(--surface-sunk);
+    color: var(--ink);
+}
+
+/* The refresh glyph has a taller cap than the multiplication sign used for
+   close, so it is set down a step to leave the two optically the same size. */
+.iconbtn_refresh {
+    font-size: 1.125rem;
+    padding: 0.25rem 0.375rem;
+}
+
+.modal__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem;
+}
+
+.disclaimer {
+    padding: 0.625rem 0.75rem;
+    margin-bottom: 1.125rem;
+    border: 1px solid #d5e3f2;
+    border-left-width: 3px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    font-size: 0.75rem;
+    line-height: 1.55;
+    color: #2a4c72;
+}
+
+.loading {
+    padding: 2.5rem 0;
+    text-align: center;
+}
+
+.loading__bar {
+    height: 0.1875rem;
+    border-radius: 999px;
+    background: var(--rule-soft);
+    overflow: hidden;
+}
+
+.loading__bar span {
+    display: block;
+    width: 40%;
+    height: 100%;
+    background: var(--accent);
+    animation: slide 1.1s ease-in-out infinite;
+}
+
+@keyframes slide {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(250%);
+    }
+}
+
+.loading__text {
+    margin-top: 0.875rem;
+    font-size: 0.8125rem;
+    color: var(--ink-weak);
+}
+
+.alert_modal {
+    margin: 0;
+}
+
+/* ------------------------------------------------------------ SOAP sections */
+
+.soap {
+    display: flex;
+    gap: 0.875rem;
+    padding-top: 1.125rem;
+    margin-top: 1.125rem;
+    border-top: 1px solid var(--rule-soft);
+}
+
+.soap:first-of-type {
+    padding-top: 0;
+    margin-top: 0;
+    border-top: none;
+}
+
+/* The letter is the navigation: a doc scanning for the plan looks for P. */
+.soap__rail {
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: grid;
+    place-items: center;
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.soap_rx .soap__rail {
+    background: #f1f9f4;
+    color: var(--live);
+    font-size: 0.9375rem;
+}
+
+.soap__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.soap__title {
+    margin-bottom: 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+
+.sub {
+    margin-top: 0.75rem;
+    margin-bottom: 0.3125rem;
+    font-size: 0.6875rem;
+    font-weight: 650;
+    color: var(--ink-weak);
+}
+
+/* An empty section is a finding in itself, so it is stated rather than hidden. */
+.silent {
+    font-size: 0.8125rem;
+    font-style: italic;
+    color: var(--ink-faint);
+}
+
+.row {
+    padding: 0.3125rem 0;
+}
+
+.row + .row {
+    border-top: 1px solid var(--rule-soft);
+}
+
+.row__text {
+    font-size: 0.8125rem;
+    line-height: 1.55;
+}
+
+.row__split {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.row__aside {
+    flex: none;
+    font-size: 0.75rem;
+    color: var(--ink-weak);
+}
+
+/*
+ * The quote is what makes a line checkable. Subordinate to the claim it
+ * supports, but always adjacent to it — a citation in a footnote is a citation
+ * nobody reads.
+ */
+.cite {
+    margin-top: 0.25rem;
+    padding-left: 0.5rem;
+    border-left: 2px solid var(--rule);
+    font-size: 0.71875rem;
+    line-height: 1.5;
+    font-style: italic;
+    color: var(--ink-faint);
+}
+
+.cite__at {
+    margin-right: 0.375rem;
+    font-style: normal;
+    font-variant-numeric: tabular-nums;
+    font-weight: 650;
+    color: var(--ink-faint);
+}
+
+.uncertain {
+    margin-top: 0.25rem;
+    font-size: 0.71875rem;
+    line-height: 1.5;
+    color: var(--warn);
+}
+
+.pill {
+    display: inline-block;
+    padding: 0.0625rem 0.4375rem;
+    border-radius: 999px;
+    background: var(--surface-sunk);
+    border: 1px solid var(--rule);
+    font-size: 0.625rem;
+    font-weight: 650;
+    color: var(--ink-weak);
+    white-space: nowrap;
+}
+
+/*
+ * Marks a citation as a translation rather than the words spoken. The draft
+ * reads in English, so a Hindi quote is shown translated — and quotation marks
+ * are deliberately dropped for those, because punctuating a translation as a
+ * verbatim quote invites a clinician to believe those were the actual words.
+ * The spoken original is on the Prescription record.
+ */
+.cite__tag {
+    margin-left: 0.375rem;
+    padding: 0.0625rem 0.3125rem;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: var(--surface-sunk);
+    font-size: 0.5625rem;
+    font-style: normal;
+    font-weight: 650;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    white-space: nowrap;
+    vertical-align: 0.05rem;
+}
+
+.toggle {
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: var(--surface);
+    padding: 0.25rem 0.625rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--ink-weak);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+/* The one action in this header that produces something the clinician takes
+   away, so it is the only one that carries the accent. */
+.toggle_primary {
+    border-color: #cddff0;
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+.toggle:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.toggle:hover {
+    background: var(--surface-sunk);
+    color: var(--ink);
+}
+
+.block {
+    padding-top: 1.125rem;
+    margin-top: 1.125rem;
+    border-top: 1px solid var(--rule-soft);
+}
+
+.block:first-of-type {
+    padding-top: 0;
+    margin-top: 0;
+    border-top: none;
+}
+
+.block__title {
+    margin-bottom: 0.5625rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+
+.prose {
+    font-size: 0.8125rem;
+    line-height: 1.65;
+}
+
+.prose_lead {
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    font-weight: 500;
+}
+
+
+.obs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    gap: 0.5rem;
+}
+
+.obs__item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.0625rem;
+    padding: 0.5625rem 0.6875rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunk);
+}
+
+.obs__label {
+    font-size: 0.6875rem;
+    color: var(--ink-faint);
+}
+
+.obs__value {
+    font-size: 0.9375rem;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+}
+
+.obs__context {
+    font-size: 0.6875rem;
+    color: var(--ink-weak);
+}
+
+.dx {
+    padding: 0.4375rem 0 0.4375rem 0.6875rem;
+    border-left: 3px solid var(--rule);
+}
+
+.dx + .dx {
+    margin-top: 0.5rem;
+}
+
+.dx__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.dx__problem {
+    font-size: 0.875rem;
+    font-weight: 650;
+}
+
+.dx__reasoning {
+    margin-top: 0.1875rem;
+    font-size: 0.78125rem;
+    line-height: 1.55;
+    color: var(--ink-weak);
+}
+
+/* ------------------------------------------------------------- prescription */
+
+/*
+ * Drawn as a prescription sheet, because that is the document this section
+ * becomes once it is signed. Identity at the top, then what it is for, then
+ * the orders in a table a clinician can check a column at a time.
+ *
+ * Status still reads twice on every drug — the badge, and the row itself. A
+ * withdrawn drug is ruled through as well as badged: on a sheet that reads
+ * like an order, one quiet marker is too easy to skim past.
+ */
+/* The sheet. Paper, with the accent carried as a printed edge along the top
+   rather than as a border colour, so the block reads as a document sitting on
+   the draft instead of one more card in the stack. */
+.script {
+    position: relative;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--surface);
+    padding: 1.25rem 1.375rem 1.375rem;
+    box-shadow: 0 1px 2px rgba(22, 25, 29, 0.04);
+    overflow: hidden;
+}
+
+.script::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: var(--accent);
+}
+
+.script__masthead {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-bottom: 0.875rem;
+    border-bottom: 1px solid var(--ink);
+}
+
+.script__title {
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    color: var(--ink);
+}
+
+/* Moved ahead of the title and boxed. Trailing the right edge it read as
+   decoration; leading the line as a badge it reads as the sheet's mark.
+   Ordered in CSS rather than moved in markup so the heading stays first in the
+   DOM and is still what a screen reader reaches first. */
+.script__mark {
+    order: -1;
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 1.875rem;
+    height: 1.875rem;
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    font-size: 1rem;
+    line-height: 1;
+    color: var(--accent);
+}
+
+/* Wraps rather than scrolls: an identity block that runs off the edge is the
+   one part of this sheet that must never be out of view. Set in a sunk strip
+   so the patient and the date read as the sheet's header and not as the first
+   two rows of its content. */
+.script__who {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 2rem;
+    margin: 0.875rem 0 0;
+    padding: 0.75rem 0.875rem;
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunk);
+}
+
+.script__field dt {
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-faint);
+}
+
+.script__field dd {
+    margin: 0.1875rem 0 0;
+    font-size: 0.875rem;
+    font-weight: 650;
+    color: var(--ink);
+}
+
+/* Never styled as a value. An unnamed patient is a gap to fill, not a field
+   that happens to be blank. */
+.script__gap {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--danger);
+}
+
+/* Set as a form section header rather than bold body text, so Diagnosis,
+   Investigations and Treatment read as the three parts of a sheet instead of
+   three sentences that happen to start in bold. */
+.script__label {
+    margin: 0;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--accent);
+}
+
+.script__label_tx {
+    margin-top: 0;
+    padding-bottom: 0;
+}
+
+/* The heading and its controls share a line, so entering edit mode does not
+   shift the table down and move the row you were aiming at. */
+.script__txhead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 1.25rem;
+    padding-bottom: 0.5rem;
+}
+
+.script__txtools {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.script__locked {
+    font-size: 0.71875rem;
+    font-style: italic;
+    color: var(--ink-faint);
+}
+
+.rxtable_edit td {
+    padding: 0.375rem 0.5rem;
+}
+
+.editblock {
+    margin-top: 0.875rem;
+    min-width: 0;
+}
+
+.editblock__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.editrow {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-top: 0.375rem;
+    min-width: 0;
+}
+
+/* Sized by flex, not by width. .cellinput carries width:100% for the table
+   cells it was written for; in a flex row two of those plus the gap add up to
+   more than the row, which is what pushed the fields past the sheet edge.
+   min-width:0 is the other half — a flex item will not shrink below its
+   content without it. */
+.editrow > .cellinput {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+}
+
+.editrow > .cellinput_when {
+    flex: 0 1 11rem;
+}
+
+/* Shown, not editable. The status came from the model's reading of the
+   consultation, and it is not this panel's job to let it be reassigned. */
+.editrow__fixed {
+    flex: none;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint);
+}
+
+.rowdrop {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    font-size: 0.9375rem;
+    line-height: 1;
+    color: var(--ink-faint);
+    cursor: pointer;
+}
+
+.rowdrop:hover {
+    border-color: #f3ced3;
+    color: var(--danger);
+}
+
+.cellinput {
+    width: 100%;
+    min-width: 5.5rem;
+    box-sizing: border-box;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+    padding: 0.3125rem 0.4375rem;
+    background: var(--surface);
+    font: inherit;
+    font-size: 0.8125rem;
+    color: var(--ink);
+}
+
+.cellinput:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+    border-color: var(--accent);
+}
+
+/* The diagnosis gets its own ruled panel. It is the reason every line below it
+   was ordered, and as a run of plain text it was the easiest thing on the
+   sheet to read past. */
+.script__dx {
+    margin: 1.125rem 0 0;
+    padding: 0.625rem 0.75rem;
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    background: var(--accent-soft);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--ink);
+}
+
+/* Stacked above the text rather than inline with it, so a long diagnosis does
+   not wrap back underneath its own label. */
+.script__dx .script__label {
+    display: block;
+    margin-bottom: 0.1875rem;
+}
+
+.script__inv {
+    margin-top: 1.125rem;
+}
+
+/* Bullets dropped for ruled rows. A prescription sheet lists its tests; it
+   does not make a case in prose, and the discs were the only round thing on
+   an otherwise square document. */
+.script__invlist {
+    margin: 0.375rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--ink);
+}
+
+.script__invlist li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.375rem 0;
+    border-bottom: 1px solid var(--rule-soft);
+}
+
+.script__invlist li:last-child {
+    border-bottom: 0;
+}
+
+.script__invwhen {
+    flex: none;
+    margin-left: 0;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint);
+}
+
+/* Five columns will not fit a phone. The table scrolls inside this box so the
+   note beside it keeps its width instead of the modal growing a sideways
+   scrollbar of its own. */
+.script__scroll {
+    overflow-x: auto;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+}
+
+/* Row under the cursor lifts slightly. Five columns of small type is a place
+   to lose your line, and this is cheaper than striping every other row. */
+.rxtable tbody tr:hover td {
+    background: var(--surface-sunk);
+}
+
+.rxtable tbody tr:hover .rxtable__med {
+    background: var(--surface-sunk);
+}
+
+.rxtable {
+    width: 100%;
+    min-width: 34rem;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+}
+
+.rxtable th {
+    padding: 0.5625rem 0.75rem;
+    border-bottom: 2px solid var(--accent);
+    background: var(--surface-sunk);
+    text-align: left;
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--ink-weak);
+    white-space: nowrap;
+}
+
+.rxtable td {
+    padding: 0.6875rem 0.75rem;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+    line-height: 1.5;
+    color: var(--ink);
+}
+
+/* Dose figures line up column-wise. Proportional digits made 500 and 10 in the
+   same column look like different quantities of thing. */
+.rxtable td + td {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.rxtable tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+/* The drug is what a reviewer scans; the dosing columns are what they check
+   once they have found the row. Giving the name column a tint and a rule makes
+   that scan a straight line down the left edge. */
+.rxtable__med {
+    min-width: 12rem;
+    border-right: 1px solid var(--rule-soft);
+    background: #fcfdfe;
+    white-space: normal;
+}
+
+.rxtable__drug {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+}
+
+/* Everything under the drug name is context, not an order, so it sits a step
+   back from the dosing columns beside it. */
+.rxtable__sub {
+    display: block;
+    margin-top: 0.125rem;
+    font-size: 0.71875rem;
+    color: var(--ink-faint);
+}
+
+.rxtable__note {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.71875rem;
+    font-style: italic;
+    color: var(--ink-weak);
+}
+
+.rxtable__med .uncertain,
+.rxtable__med .cite {
+    display: block;
+}
+
+.rxrow_stopped td {
+    color: var(--ink-faint);
+}
+
+.rxrow_stopped .rxtable__drug {
+    text-decoration: line-through;
+    color: var(--danger);
+}
+
+/*
+ * A quiet marker beside the drug name, not a chip competing with it. The pill,
+ * the dot and the fill are all gone: on a table row the word alone is enough.
+ *
+ * Not levelled flat, though. "New" and "continued" are the ordinary states and
+ * are set in the faint ink of the sub-lines beneath them, while "changed" and
+ * "stopped" keep their colour and weight — those are the two a reviewer must
+ * not skim past, and muting them to match the common case would be trading a
+ * cosmetic gain for a clinical one.
+ */
+.badge {
+    display: inline;
+    font-size: 0.5625rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    vertical-align: 0.09em;
+}
+
+.badge_continued,
+.badge_new {
+    color: var(--ink-faint);
+}
+
+.badge_changed {
+    font-weight: 700;
+    color: var(--warn);
+}
+
+.badge_stopped {
+    font-weight: 700;
+    color: var(--danger);
+}
+
+.json {
+    padding: 0.8125rem;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunk);
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.6875rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 22rem;
+    overflow: auto;
+}
+
+.modal__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.8125rem 1.25rem;
+    border-top: 1px solid var(--rule);
+    background: var(--surface-sunk);
+}
+
+/* Only Close remains, and space-between would strand it on the left. */
+.modal__footer_end {
+    justify-content: flex-end;
+}
+
+.modal__actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dot[data-state='recording'],
+    .wave span,
+    .live__pip,
+    .loading__bar span {
+        animation: none;
+    }
+
+    .loading__bar span {
+        width: 100%;
+    }
+}
+
+@media (max-width: 40rem) {
+    :host {
+        padding: 0;
+    }
+
+    .card {
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+
+    .header,
+    .console {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .backdrop {
+        padding: 0;
+    }
+
+    .modal {
+        max-height: 100vh;
+        border-radius: 0;
+    }
+}
